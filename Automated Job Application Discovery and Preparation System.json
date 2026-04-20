@@ -1,0 +1,3351 @@
+{
+  "name": "Automated Job Application Discovery and Preparation System",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "c1dcbfaf-0f0c-4388-a82a-b5aa76f3fa3f",
+      "name": "Daily 9am - Job Discovery",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        3232
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.adzuna.com/v1/api/jobs/in/search/1?app_id=YOUR_APP_ID&app_key=YOUR_APP_KEY&what=automation+engineer&where=bangalore&results_per_page=50",
+        "options": {}
+      },
+      "id": "2cf582ac-badc-4433-95d7-49b34ac22ec1",
+      "name": "Adzuna API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        2848
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://remotive.com/api/remote-jobs?category=software-dev&limit=50",
+        "options": {}
+      },
+      "id": "17f7b7c6-b5c7-42a7-ab11-5cc8938ec2d2",
+      "name": "Remotive API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        3040
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.indeed.com/rss?q=automation+engineer&l=bangalore",
+        "options": {}
+      },
+      "id": "1a687083-1b6a-4cfd-bfbe-dcd51ba34b6a",
+      "name": "Indeed RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        3232
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://internshala.com/rss/internships",
+        "options": {}
+      },
+      "id": "775a2030-a5c0-4e66-ad79-891b072fe694",
+      "name": "Internshala RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        3424
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://www.linkedin.com/jobs/search/?keywords=automation+engineer&f_E=1&f_JT=I",
+        "options": {}
+      },
+      "id": "f77754d8-d023-4707-84a3-6a77366d0410",
+      "name": "LinkedIn Jobs RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        480,
+        3616
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 5
+      },
+      "id": "fadd4eb1-9551-4b1e-bd03-6047028d82cc",
+      "name": "Merge All Job Sources",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        704,
+        3184
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=From the job list below, return ONLY jobs matching:\n- Titles: automation engineer, n8n developer, workflow automation, no-code developer, AI automation, RPA developer\n- Skills match at least 3 of: n8n, Python, Zapier, Make, REST APIs, AI tools, automation\n- Location: Remote OR Bangalore OR India\n- Type: full-time job OR internship\n\nReturn as JSON array with fields: title, company, url, salary, description, type (exactly 'job' or 'internship')\nIf nothing matches return []\n\nJob list: {{ $json.all_jobs }}",
+        "options": {
+          "systemMessage": "You are a job filter assistant. Return ONLY valid JSON array, no extra text."
+        }
+      },
+      "id": "c0e773f7-d5c7-4c08-a7fd-4ba0f78eb3df",
+      "name": "Filter Jobs with AI",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        928,
+        3232
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "2ddaa8dd-456f-479b-972b-d2925df4fc11",
+      "name": "Gemini Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        3456
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YsdmQQd5GnPKU8TF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nconst cleaned = raw.replace(/```json\\n?/g,'').replace(/```\\n?/g,'').trim();\nconst jobs = JSON.parse(cleaned);\nreturn jobs.map(j => ({ json: j }));"
+      },
+      "id": "490fea4d-ea44-4966-bdca-29850b493132",
+      "name": "Parse JSON Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        3232
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c6ab7b4a-d0c0-4e3b-b178-3ab30769514e",
+      "name": "Process Jobs One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1504,
+        3232
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "combineFilters": "OR",
+        "options": {}
+      },
+      "id": "2c3245d5-b65f-442a-ad3d-c46d20f13f5e",
+      "name": "Read Existing Companies",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1728,
+        3168
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ !$('Read Existing Companies').all().some(row => row.json.Company === $json.company) }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8f600a8c-33c8-462d-9ad7-b0b4f1c4b44c",
+      "name": "Check if New Company",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1952,
+        3168
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.company }}",
+            "Job Title": "={{ $json.title }}",
+            "Applied Date": "={{ new Date().toISOString() }}",
+            "Type": "={{ $json.type }}",
+            "Job URL": "={{ $json.url }}",
+            "Status": "matched"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3b25e328-805a-4829-8266-68ad8eda5441",
+      "name": "Append New Job",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2176,
+        3232
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "id": "e4be2704-81d2-4640-9fcb-bf1bd301c4fd",
+      "name": "Daily 10am - Company Research",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        2624
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "matched"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1803efe-a2b6-46a7-a88a-a30ae79e6c10",
+      "name": "Get Matched Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        2624
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "892b2405-1de9-4e01-8b97-c96100872661",
+      "name": "Process Companies One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        704,
+        2624
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json['Job URL'] }}",
+        "options": {}
+      },
+      "id": "9b0c8554-ce19-4bd7-8eb9-13765a2f7e46",
+      "name": "Scrape Job Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        928,
+        2512
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json['Job URL'].split('/').slice(0,3).join('/') }}/careers",
+        "options": {}
+      },
+      "id": "7519a24b-29d5-4e9d-95e6-bfdf1fb9dd09",
+      "name": "Scrape Careers Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1152,
+        2512
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.hunter.io/v2/domain-search?domain={{ $json['Job URL'].split('/')[2] }}&api_key=<__PLACEHOLDER_VALUE__hunter_api_key__>",
+        "options": {}
+      },
+      "id": "3defb335-1b51-4fde-90bb-015a4f05c817",
+      "name": "Hunter.io Email Finder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1376,
+        2512
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a company researcher. Using the website content below, do two things:\n1. Summarize the company in exactly 3 lines: what they do, their mission, why someone would want to work there.\n2. Check if the careers page content contains an open internship or job application form. Answer: Has Portal: Yes or No. If Yes, provide the exact Portal URL.\nReturn as JSON: { \"summary\": \"...\", \"has_portal\": \"Yes\" or \"No\", \"portal_url\": \"...\" or \"\" }"
+        }
+      },
+      "id": "7cafb757-536d-4002-849e-0572c7e4daeb",
+      "name": "Research Company",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1824,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6f8b95f8-5d27-4cfd-946f-6c50655a2570",
+      "name": "Gemini Research Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1904,
+        2736
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YsdmQQd5GnPKU8TF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.company }}",
+            "Job Title": "=",
+            "Job URL": "=",
+            "Type": "=",
+            "HR Email": "={{ $json.hr_email }}",
+            "Company Summary": "={{ $json.summary }}",
+            "Has Portal": "={{ $json.has_portal }}",
+            "Portal URL": "={{ $json.portal_url }}",
+            "Status": "researched"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6fa09395-e22e-4dd6-be00-28b5c7421012",
+      "name": "Update Research Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2624,
+        2624
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "chatInput",
+              "value": "=Job Page: {{ $('Scrape Job Page').item.json.body || 'Not available' }}\n\nCareers Page: {{ $('Scrape Careers Page').item.json.body || 'Not available' }}\n\nCompany Domain: {{ $json['Job URL'].split('/')[2] }}\n\nJob URL: {{ $json['Job URL'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "64b54d54-fa3a-4c21-92ed-704091fae0dd",
+      "name": "Prepare Research Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1600,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output;\nconst cleaned = raw.replace(/```json\\n?/g,'').replace(/```\\n?/g,'').trim();\nconst result = JSON.parse(cleaned);\nreturn [{ json: result }];"
+      },
+      "id": "e4e70855-b02e-419d-81c2-3bcb7d67507a",
+      "name": "Parse Research JSON",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2176,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "HR Email",
+              "value": "={{ $('Hunter.io Email Finder').item.json.data?.emails?.[0]?.value || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Company Summary",
+              "value": "={{ $json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Has Portal",
+              "value": "={{ $json.has_portal }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "Portal URL",
+              "value": "={{ $json.portal_url }}",
+              "type": "string"
+            },
+            {
+              "id": "id-5",
+              "name": "Status",
+              "value": "Researched",
+              "type": "string"
+            },
+            {
+              "id": "id-6",
+              "name": "Company",
+              "value": "={{ $('Process Companies One by One').item.json.Company }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9650e695-7619-4d1f-9a19-ffb1dc462868",
+      "name": "Map Research to Sheet",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2400,
+        2512
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 11
+            }
+          ]
+        }
+      },
+      "id": "a496c286-b641-4044-ad04-99083c56653c",
+      "name": "Daily 11am - Application Prep",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        256,
+        2176
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "researched"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "63409a05-0233-4ef0-92f1-083e34a38d89",
+      "name": "Get Researched Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        2176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "438e042f-f391-43b7-b359-1379306c5bdf",
+      "name": "Process Applications One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        704,
+        2176
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json['Job Title'] + ' at ' + $json.Company }}",
+        "options": {
+          "systemMessage": "=Tailor the resume below to match this job description. Keep all real experience but reorder and reword bullet points to match the job's keywords. Add relevant skills from the JD that the candidate genuinely has.\n\nResume: [PASTE YOUR FULL RESUME HERE AS PLAIN TEXT]\n\nJob Title: {{ $json['Job Title'] }}\nCompany: {{ $json.Company }}\nType: {{ $json.Type }}\n\nReturn the complete tailored resume as plain text."
+        }
+      },
+      "id": "29538f64-6ba5-43f8-aa87-8e4bff5ad6ce",
+      "name": "Tailor Resume",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        928,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "3ff37c2a-5969-4b44-b73f-811367308da5",
+      "name": "Gemini Resume Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1008,
+        2272
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YsdmQQd5GnPKU8TF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.Company }}",
+        "options": {
+          "systemMessage": "=Write a formal cover letter for this role. Keep it under 250 words. Use a professional but warm tone. Do not use generic phrases like 'I am writing to express'.\n\nCompany: {{ $('Process Applications One by One').item.json.Company }}\nCompany Summary: {{ $('Process Applications One by One').item.json['Company Summary'] }}\nJob Title: {{ $('Process Applications One by One').item.json['Job Title'] }}\nType: {{ $('Process Applications One by One').item.json.Type }}\n\nMy background: [PASTE YOUR 3-4 LINE BACKGROUND HERE]"
+        }
+      },
+      "id": "9b8a6b96-2d32-476a-a2c4-ca27c71bd00d",
+      "name": "Generate Cover Letter",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1280,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-1.5-flash",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "id": "6fbf979b-0c23-4daf-a4ba-2636b2ed2501",
+      "name": "Gemini Cover Letter Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        2272
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YsdmQQd5GnPKU8TF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "folderId": "<__PLACEHOLDER_VALUE__folder_id__>",
+        "title": "={{ $('Process Applications One by One').item.json.Company + ' - Tailored Resume' }}"
+      },
+      "id": "a441d1ad-16e5-463f-b9f9-a507ca1d5a57",
+      "name": "Create Resume Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1632,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "folderId": "<__PLACEHOLDER_VALUE__folder_id__>",
+        "title": "={{ $('Process Applications One by One').item.json.Company + ' - Cover Letter' }}"
+      },
+      "id": "575c59f7-2501-46f2-8a0d-585928f82f74",
+      "name": "Create Cover Letter Doc",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1856,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $('Process Applications One by One').item.json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Resume Doc URL",
+              "value": "={{ $('Create Resume Doc').item.json.documentId }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Cover Letter URL",
+              "value": "={{ $json.documentId }}",
+              "type": "string"
+            },
+            {
+              "id": "id-4",
+              "name": "Status",
+              "value": "Prep Complete",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "684224fa-dc5d-4300-bda8-389a07e11415",
+      "name": "Map Prep Data to Sheet",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2080,
+        2048
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.Company }}",
+            "Resume Doc URL": "={{ $('Create Resume Doc').first().json.id }}",
+            "Cover Letter URL": "={{ $('Create Cover Letter Doc').first().json.id }}",
+            "Status": "prep done"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "16726784-81f5-4c02-838d-2dd18fdbdc78",
+      "name": "Update Prep Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2304,
+        2176
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 12
+            }
+          ]
+        }
+      },
+      "id": "f07e2982-5fa5-4c41-aa47-cc1c33511ce4",
+      "name": "Daily 12pm - Send Applications",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "prep done"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4e103e4d-6369-48e4-8785-cfa167684402",
+      "name": "Get Prep Complete Jobs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1584,
+        960
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "71735faa-d0f1-4eef-a7aa-dd9920941343",
+      "name": "Process Sends One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1600,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json['Has Portal'] }}",
+              "rightValue": "Yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2fb7c5ca-fa51-445d-9f5c-810e3163b6c3",
+      "name": "Check Application Method",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1824,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Status",
+              "value": "Portal Applied",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Notes",
+              "value": "=Manual application required via portal: {{ $json['Portal URL'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f6ec218a-9fde-4bf0-bfcb-cb473c7380d1",
+      "name": "Mark Portal Applied",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        816
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['HR Email'] }}",
+        "subject": "=Regarding {{ $json['Job Title'] }} opportunity at {{ $json.Company }}",
+        "emailType": "text",
+        "message": "={{ $('Gemini Cold Email').first().json.output }}",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {
+                "property": "Resume Doc URL,Cover Letter URL"
+              }
+            ]
+          }
+        }
+      },
+      "id": "9700b93f-893d-4ac2-9fc6-92a8f0683f44",
+      "name": "Send Application Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        928,
+        608
+      ],
+      "webhookId": "294a332b-e1c9-4c45-ab71-658eb9f79c10",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2jarAx9k5qzKomdt",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $('Process Sends One by One').item.json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Status",
+              "value": "Applied",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Original Email",
+              "value": "={{ $json.messageId }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ce962d5e-df53-4974-91c1-5e12db90376c",
+      "name": "Mark Email Sent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.Company }}",
+            "Status": "applied",
+            "Applied Date": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3f70258c-0ab8-47a0-95f1-11867e5ef6d3",
+      "name": "Update Application Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1376,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 14
+            }
+          ]
+        }
+      },
+      "id": "2f8e0b3f-ffce-4c1a-94e7-1caa57602660",
+      "name": "Daily 2pm - Send Follow-ups",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        208,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "applied"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a6e8c50a-4e03-43a7-824d-6ca8459c0a2b",
+      "name": "Get Applications Needing Follow-up",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        480,
+        1552
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\nconst today = new Date();\nconst filtered = rows.filter(r => {\n  const appliedDate = new Date(r['Applied Date']);\n  const daysSince = (today - appliedDate) / (1000*60*60*24);\n  return daysSince >= 5 && r['Follow-up Sent'] !== 'Yes';\n});\nreturn filtered.map(r => ({ json: r }));"
+      },
+      "id": "283ce98c-3fb8-4086-9443-1600a42e8e68",
+      "name": "Filter 7+ Days Old",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b30e101a-f3aa-44b9-9423-584107a78b76",
+      "name": "Process Follow-ups One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1008,
+        1552
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['HR Email'] }}",
+        "subject": "=Following up: {{ $json['Job Title'] }} Application",
+        "emailType": "text",
+        "message": "=Dear Hiring Manager,\n\nI wanted to follow up on my application for the {{ $json['Job Title'] }} position at {{ $json.Company }}, which I submitted on {{ $json['Applied Date'] }}.\n\nI remain very interested in this opportunity and would welcome the chance to discuss how my skills align with your needs.\n\nThank you for your consideration.\n\nBest regards",
+        "options": {}
+      },
+      "id": "7347db88-3531-4e42-9ca3-0f026c550810",
+      "name": "Send Follow-up Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1280,
+        1552
+      ],
+      "webhookId": "7c75a25c-c7f3-43cc-a84f-3eb4a3a94eaf",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2jarAx9k5qzKomdt",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $('Process Follow-ups One by One').item.json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Follow-up Sent",
+              "value": "=yes",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Status",
+              "value": "Follow-up Sent",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6319a12a-0ba5-4741-aff9-740e06a456f2",
+      "name": "Mark Follow-up Sent",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1520,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Company": "={{ $json.Company }}",
+            "Follow-up Sent": "yes",
+            "Status": "follow-up sent"
+          },
+          "matchingColumns": [
+            "Company"
+          ],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "319a870a-e711-4e80-83aa-00db6bab7fc6",
+      "name": "Update Follow-up Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1824,
+        1568
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "includeSpamTrash": false,
+          "includeDrafts": false,
+          "labelIds": [],
+          "q": "",
+          "readStatus": "unread",
+          "sender": ""
+        },
+        "options": {}
+      },
+      "id": "9084da1b-7a45-4317-93c9-06ba2b9c8809",
+      "name": "Gmail Response Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        256,
+        304
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "2jarAx9k5qzKomdt",
+          "name": "Gmail OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const email = $input.first().json;\nconst subject = email.subject || '';\nconst from = email.from || '';\n\n// Try to extract company from subject or sender domain\nlet company = '';\nconst domainMatch = from.match(/@([^.]+)/);\nif (domainMatch) {\n  company = domainMatch[1];\n}\n\nreturn [{ json: { company, emailSubject: subject, emailFrom: from, emailBody: email.snippet || email.textPlain || '' } }];"
+      },
+      "id": "f74577e9-64b6-4516-abd5-3d8eee976f2d",
+      "name": "Extract Company from Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-3",
+              "name": "Notes",
+              "value": "=Response received: {{ $json.emailSubject }}",
+              "type": "string"
+            },
+            {
+              "id": "93b7762c-bb56-49a6-a449-625a1030100a",
+              "name": "status",
+              "value": "Replied",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "284aba90-4205-46cb-af30-944c677bcf6a",
+      "name": "Mark Response Received",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        704,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "replied"
+          },
+          "matchingColumns": [
+            "HR Email"
+          ],
+          "schema": [
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job Title",
+              "displayName": "Job Title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Job URL",
+              "displayName": "Job URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HR Email",
+              "displayName": "HR Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Company Summary",
+              "displayName": "Company Summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Has Portal",
+              "displayName": "Has Portal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Portal URL",
+              "displayName": "Portal URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Applied Date",
+              "displayName": "Applied Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Follow-up Sent",
+              "displayName": "Follow-up Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Original Email",
+              "displayName": "Original Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resume Doc URL",
+              "displayName": "Resume Doc URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Cover Letter URL",
+              "displayName": "Cover Letter URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6c588530-ee8a-4c8f-8755-048f2ba7c119",
+      "name": "Update Response Status",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        928,
+        304
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "6183238112",
+        "text": "=📧 New Application Ready!\n\nCompany: {{ $json.Company }}\nRole: {{ $json['Job Title'] }} ({{ $json.Type }})\nHR Email: {{ $json['HR Email'] }}\nHas Portal: {{ $json['Has Portal'] }}\nPortal URL: {{ $json['Portal URL'] }}\n\nEmail draft:\n{{ $('Generate Cold Email').first().json.output }}\n\nResume: {{ $json['Resume Doc URL'] }}\nCover Letter: {{ $json['Cover Letter URL'] }}\n\nReply YES to send or NO to skip",
+        "additionalFields": {}
+      },
+      "id": "22d0f233-4d47-40a5-93a5-8dbddf63a414",
+      "name": "Send Telegram Preview",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2224,
+        624
+      ],
+      "webhookId": "9eb85d63-c2de-40c5-a518-03afb53fa7ce",
+      "credentials": {
+        "telegramApi": {
+          "id": "yniwksLeYsRimCxR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "telegram-approval",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "c20d9b9f-36a1-49c9-8666-a498be5d98e4",
+      "name": "Wait for Telegram Reply",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        768
+      ],
+      "webhookId": "7185c362-1edc-4ad8-9228-4d42233dee74"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json.body.message.text }}",
+              "rightValue": "YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "bfd29b37-ca28-4ba4-81bf-ff0233eeb257",
+      "name": "Check Approval Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        480,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "id-1",
+              "name": "Company",
+              "value": "={{ $json.Company }}",
+              "type": "string"
+            },
+            {
+              "id": "id-2",
+              "name": "Status",
+              "value": "Skipped",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4ec41dee-7939-4020-ba7e-9ca2a510c655",
+      "name": "Mark as Skipped",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1152,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "db332af8-3dbb-45a4-acad-bbd10c98818d",
+      "name": "Weekly Monday 8am - Summary",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        224,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w",
+          "mode": "list",
+          "cachedResultName": "job application",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wqbJeXUgzpwwuCPrhuBbpg4Puf6GA1OhOumEhYA9U4w/edit#gid=0"
+        },
+        "options": {}
+      },
+      "id": "ceb05295-fa18-4dd0-91f8-8d9e5688f5ac",
+      "name": "Read All Applications",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        1200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "i73lfCNy2oMeropj",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $input.all().map(i => i.json);\n\nconst applied = rows.filter(r => r.Status === 'Applied').length;\nconst portal = rows.filter(r => r.Status === 'Portal Applied').length;\nconst followup = rows.filter(r => r.Status === 'Follow-up Sent').length;\nconst replied = rows.filter(r => r.Status === 'Replied').length;\nconst interview = rows.filter(r => r.Status === 'Interview').length;\nconst rejected = rows.filter(r => r.Status === 'Rejected').length;\nconst skipped = rows.filter(r => r.Status === 'Skipped').length;\nconst total = applied + portal;\nconst rate = total > 0 ? Math.round((replied/total)*100) : 0;\n\nreturn [{ json: { \n  applied, \n  portal, \n  followup, \n  replied, \n  interview, \n  rejected, \n  skipped, \n  rate \n} }];"
+      },
+      "id": "78e65656-e792-455f-81a9-92a0366b6e59",
+      "name": "Calculate Summary Stats",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "6183238112",
+        "text": "=📊 Weekly Job Search Report\n\n📧 Cold emails sent: {{ $json.applied }}\n🌐 Portal applications: {{ $json.portal }}\n🔁 Follow-ups sent: {{ $json.followup }}\n💬 Replied: {{ $json.replied }}\n🎯 Interviews: {{ $json.interview }}\n❌ Rejected: {{ $json.rejected }}\n⏭️ Skipped: {{ $json.skipped }}\n\nReply rate: {{ $json.rate }}%\nKeep pushing! 🚀",
+        "additionalFields": {}
+      },
+      "id": "f902ff75-18ce-452b-bde5-8a98c36be319",
+      "name": "Send Weekly Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        848,
+        1168
+      ],
+      "webhookId": "af00a12d-bdec-48ba-bdfd-c94884beef03",
+      "credentials": {
+        "telegramApi": {
+          "id": "yniwksLeYsRimCxR",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "id-1",
+              "leftValue": "={{ $json['Has Portal'] }}",
+              "rightValue": "Yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "de95139f-e458-4e28-b78d-a2e73bbadaf6",
+              "leftValue": "={{ $json['Has Portal'] }}",
+              "rightValue": "no",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "320af8b4-2f54-4ac3-9e57-47525b63ca47",
+      "name": "Check Portal or Email",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Write a personalized cold email to the HR of this company. \nUnder 150 words. Friendly and professional.\nReference something specific about the company.\n\nCompany: {{ $json.Company }}\nSummary: {{ $json['Company Summary'] }}\nHR Email: {{ $json['HR Email'] }}\nRole: {{ $json['Job Title'] }}\nType: {{ $json.Type }}\nMy background: [YOUR BACKGROUND HERE]\n\nReturn only the email body as plain text. No subject line.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1808,
+        432
+      ],
+      "id": "6640b6ec-f939-4f15-9d27-1e4886dc02f4",
+      "name": "Generate Cold Email"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        352
+      ],
+      "id": "cec07ae0-14ef-4ada-a784-ff40fa7ae124",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YsdmQQd5GnPKU8TF",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily 9am - Job Discovery": {
+      "main": [
+        [
+          {
+            "node": "Adzuna API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Remotive API",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Indeed RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Internshala RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "LinkedIn Jobs RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adzuna API": {
+      "main": [
+        [
+          {
+            "node": "Merge All Job Sources",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remotive API": {
+      "main": [
+        [
+          {
+            "node": "Merge All Job Sources",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Indeed RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge All Job Sources",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Internshala RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge All Job Sources",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "LinkedIn Jobs RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge All Job Sources",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Gemini Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Filter Jobs with AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge All Job Sources": {
+      "main": [
+        [
+          {
+            "node": "Filter Jobs with AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Jobs with AI": {
+      "main": [
+        [
+          {
+            "node": "Parse JSON Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse JSON Output": {
+      "main": [
+        [
+          {
+            "node": "Process Jobs One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Jobs One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Read Existing Companies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Existing Companies": {
+      "main": [
+        [
+          {
+            "node": "Check if New Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if New Company": {
+      "main": [
+        [
+          {
+            "node": "Append New Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append New Job": {
+      "main": [
+        [
+          {
+            "node": "Process Jobs One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 10am - Company Research": {
+      "main": [
+        [
+          {
+            "node": "Get Matched Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Matched Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Companies One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Companies One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Scrape Job Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Job Page": {
+      "main": [
+        [
+          {
+            "node": "Scrape Careers Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Careers Page": {
+      "main": [
+        [
+          {
+            "node": "Hunter.io Email Finder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter.io Email Finder": {
+      "main": [
+        [
+          {
+            "node": "Prepare Research Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Research Input": {
+      "main": [
+        [
+          {
+            "node": "Research Company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Research Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Company",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Company": {
+      "main": [
+        [
+          {
+            "node": "Parse Research JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Research JSON": {
+      "main": [
+        [
+          {
+            "node": "Map Research to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Research to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Update Research Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Research Data": {
+      "main": [
+        [
+          {
+            "node": "Process Companies One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 11am - Application Prep": {
+      "main": [
+        [
+          {
+            "node": "Get Researched Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Researched Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Applications One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Applications One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Tailor Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Resume Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Tailor Resume",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tailor Resume": {
+      "main": [
+        [
+          {
+            "node": "Generate Cover Letter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini Cover Letter Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Cover Letter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Cover Letter": {
+      "main": [
+        [
+          {
+            "node": "Create Resume Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Resume Doc": {
+      "main": [
+        [
+          {
+            "node": "Create Cover Letter Doc",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Cover Letter Doc": {
+      "main": [
+        [
+          {
+            "node": "Map Prep Data to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Prep Data to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Update Prep Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Prep Status": {
+      "main": [
+        [
+          {
+            "node": "Process Applications One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 12pm - Send Applications": {
+      "main": [
+        [
+          {
+            "node": "Get Prep Complete Jobs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Prep Complete Jobs": {
+      "main": [
+        [
+          {
+            "node": "Process Sends One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Sends One by One": {
+      "main": [
+        [
+          {
+            "node": "Generate Cold Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Application Method",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Application Method": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Preview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Application Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Telegram Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Application Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Email Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Portal Applied": {
+      "main": [
+        [
+          {
+            "node": "Update Application Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Email Sent": {
+      "main": [
+        [
+          {
+            "node": "Update Application Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Application Status": {
+      "main": [
+        [
+          {
+            "node": "Process Sends One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 2pm - Send Follow-ups": {
+      "main": [
+        [
+          {
+            "node": "Get Applications Needing Follow-up",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Applications Needing Follow-up": {
+      "main": [
+        [
+          {
+            "node": "Filter 7+ Days Old",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter 7+ Days Old": {
+      "main": [
+        [
+          {
+            "node": "Process Follow-ups One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Follow-ups One by One": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send Follow-up Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Follow-up Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Follow-up Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Follow-up Sent": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Follow-up Status": {
+      "main": [
+        [
+          {
+            "node": "Process Follow-ups One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Response Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract Company from Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Company from Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Response Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Response Received": {
+      "main": [
+        [
+          {
+            "node": "Update Response Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Telegram Reply": {
+      "main": [
+        [
+          {
+            "node": "Check Approval Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Approval Response": {
+      "main": [
+        [
+          {
+            "node": "Check Portal or Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark as Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark as Skipped": {
+      "main": [
+        [
+          {
+            "node": "Update Application Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Monday 8am - Summary": {
+      "main": [
+        [
+          {
+            "node": "Read All Applications",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read All Applications": {
+      "main": [
+        [
+          {
+            "node": "Calculate Summary Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Summary Stats": {
+      "main": [
+        [
+          {
+            "node": "Send Weekly Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Portal or Email": {
+      "main": [
+        [
+          {
+            "node": "Mark Portal Applied",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Application Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Cold Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Cold Email": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b0bd02be-feb8-4030-a9c0-2ee9247440f0",
+  "meta": {
+    "instanceId": "274a3fa70d049dcce0f505596a7348617aa99befbbd82a8976318f943475317d"
+  },
+  "id": "hRQnyrn9pFgeTmom",
+  "tags": []
+}
